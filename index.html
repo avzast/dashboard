@@ -1,0 +1,458 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Регистрации на мероприятие</title>
+<style>
+  :root {
+    --bg: #f5f6f8;
+    --card: #ffffff;
+    --text: #1b1f27;
+    --muted: #5f6877;
+    --line: #e5e7eb;
+    --total: #2f5bea;
+    --paid: #12805c;
+    --unpaid: #c2410c;
+    --bar-bg: #e8ebf0;
+    --btn-bg: #2f5bea;
+    --btn-text: #ffffff;
+    --warn-bg: #fff6e0;
+    --warn-line: #e8c46a;
+    --warn-text: #5c4300;
+    --err-bg: #fdeceb;
+    --err-line: #e58f8a;
+    --err-text: #7a1a14;
+    --info-bg: #eef2fd;
+    --info-line: #c5d1f7;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #12151b;
+      --card: #1b2029;
+      --text: #e8eaee;
+      --muted: #a0a9b8;
+      --line: #2b323e;
+      --total: #7c9bff;
+      --paid: #4cc79a;
+      --unpaid: #f08a5d;
+      --bar-bg: #2b323e;
+      --btn-bg: #7c9bff;
+      --btn-text: #0f1420;
+      --warn-bg: #33290f;
+      --warn-line: #7a6320;
+      --warn-text: #f3dca0;
+      --err-bg: #3a1917;
+      --err-line: #8c3b36;
+      --err-text: #f6c4c0;
+      --info-bg: #1c2438;
+      --info-line: #33406a;
+    }
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--text);
+    font-family: "Segoe UI", system-ui, -apple-system, Roboto, Arial, sans-serif;
+    line-height: 1.4;
+  }
+  main { max-width: 960px; margin: 0 auto; padding: 24px 16px 40px; }
+  header { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 8px; }
+  h1 { font-size: 22px; margin: 0; }
+  .btn {
+    display: inline-block; cursor: pointer; border: 0; border-radius: 8px;
+    background: var(--btn-bg); color: var(--btn-text);
+    font: inherit; font-size: 14px; font-weight: 600; padding: 9px 16px;
+  }
+  .btn:focus-within, .btn:hover { filter: brightness(1.08); }
+  .btn input { position: absolute; width: 1px; height: 1px; opacity: 0; }
+  .source {
+    background: var(--info-bg); border: 1px solid var(--info-line);
+    border-radius: 10px; padding: 10px 14px; margin: 0 0 12px; font-size: 14px;
+  }
+  .source small { display: block; color: var(--muted); margin-top: 2px; font-size: 13px; }
+  .notes { list-style: none; margin: 0 0 16px; padding: 0; display: grid; gap: 8px; }
+  .notes:empty { display: none; }
+  .notes li { border-radius: 10px; padding: 10px 14px; font-size: 14px; border: 1px solid; }
+  .notes li.warn { background: var(--warn-bg); border-color: var(--warn-line); color: var(--warn-text); }
+  .notes li.err  { background: var(--err-bg);  border-color: var(--err-line);  color: var(--err-text); font-weight: 600; }
+  body.drag main { outline: 3px dashed var(--total); outline-offset: -8px; }
+
+  .kpis { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; margin-bottom: 24px; }
+  .kpi { background: var(--card); border: 1px solid var(--line); border-radius: 12px; padding: 18px 20px; }
+  .kpi .num { font-size: 56px; font-weight: 700; line-height: 1; font-variant-numeric: tabular-nums; }
+  .kpi .label { margin-top: 8px; font-size: 15px; color: var(--muted); }
+  .kpi.total .num { color: var(--total); }
+  .kpi.paid .num { color: var(--paid); }
+  .kpi.unpaid .num { color: var(--unpaid); }
+
+  .tables { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; align-items: start; }
+  section { background: var(--card); border: 1px solid var(--line); border-radius: 12px; padding: 16px 16px 8px; overflow-x: auto; }
+  h2 { font-size: 16px; margin: 0 0 8px; }
+  table { width: 100%; border-collapse: collapse; font-size: 14px; }
+  th, td { padding: 8px 6px; text-align: right; border-bottom: 1px solid var(--line); white-space: nowrap; }
+  th:first-child, td:first-child { text-align: left; white-space: normal; }
+  th { color: var(--muted); font-weight: 600; font-size: 12px; }
+  tbody tr:last-child td { border-bottom: 0; }
+  tfoot td { font-weight: 700; border-top: 2px solid var(--line); border-bottom: 0; }
+  td { font-variant-numeric: tabular-nums; }
+  .pct { display: inline-flex; align-items: center; gap: 6px; justify-content: flex-end; }
+  .bar { width: 44px; height: 6px; border-radius: 3px; background: var(--bar-bg); overflow: hidden; }
+  .bar i { display: block; height: 100%; background: var(--paid); }
+  .empty { color: var(--muted); font-size: 14px; padding: 8px 0 12px; }
+
+  @media (max-width: 760px) {
+    .tables { grid-template-columns: 1fr; }
+    .kpis { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    .kpi.total { grid-column: 1 / -1; }
+    .kpi .num { font-size: 44px; }
+    .kpi { padding: 14px; min-width: 0; }
+    .bar { display: none; }
+    section { padding-left: 10px; padding-right: 10px; }
+    th, td { padding: 8px 4px; }
+  }
+</style>
+</head>
+<body>
+<main>
+  <header>
+    <h1>Регистрации на мероприятие</h1>
+    <label class="btn">Открыть свежий CSV…
+      <input type="file" id="file" accept=".csv,text/csv,text/plain">
+    </label>
+  </header>
+
+  <div class="source" id="source"></div>
+  <ul class="notes" id="notes" aria-live="polite"></ul>
+
+  <div class="kpis">
+    <div class="kpi total"><div class="num" id="k-total">–</div><div class="label">Всего зарегистрировались</div></div>
+    <div class="kpi paid"><div class="num" id="k-paid">–</div><div class="label">Оплатили</div></div>
+    <div class="kpi unpaid"><div class="num" id="k-unpaid">–</div><div class="label">Не оплатили</div></div>
+  </div>
+
+  <div class="tables">
+    <section><h2>По каналам</h2><div id="t-source"></div></section>
+    <section><h2>По городам</h2><div id="t-city"></div></section>
+  </div>
+</main>
+
+<!-- Встроенный снимок на момент SNAPSHOT_DATE. Имена, билеты и даты сюда намеренно не попадают:
+     для дашборда нужны только город, канал и признак оплаты. -->
+<script type="text/plain" id="snapshot">city,source,paid
+Астана,Telegram,да
+Актобе,Email-рассылка,да
+Астана,Сайт,да
+Астана,Telegram,да
+Астана,Email-рассылка,да
+Астана,Instagram,да
+Алматы,Telegram,да
+Алматы,Сайт,да
+Астана,Email-рассылка,да
+Актобе,Email-рассылка,да
+Алматы,Email-рассылка,да
+Алматы,Партнёры,да
+Астана,Telegram,нет
+Алматы,Telegram,нет
+Астана,Instagram,да
+Караганда,Instagram,да
+Алматы,Сайт,нет
+Шымкент,Instagram,нет
+Караганда,Telegram,нет
+Астана,Email-рассылка,да
+Шымкент,Telegram,нет
+Караганда,Telegram,да
+Алматы,Партнёры,да
+Караганда,Партнёры,нет
+Шымкент,Telegram,да
+Алматы,Telegram,да
+Астана,Instagram,да
+Караганда,Instagram,нет
+Астана,Instagram,нет
+Астана,Сайт,нет</script>
+
+<script>
+var SNAPSHOT_DATE = "2026-11-22 09:22"; // время изменения registrations.csv на момент создания снимка
+var NOT_SET = "(не указан)";
+var YES = ["да", "yes", "y", "true", "1", "оплачено", "оплатил", "оплатила", "paid"];
+var NO  = ["нет", "no", "n", "false", "0", "неоплачено", "неоплатил", "неоплатила", "unpaid"];
+var COLS = {
+  city:   ["city", "город"],
+  source: ["source", "канал", "источник"],
+  paid:   ["paid", "оплата", "оплачено", "оплатил"]
+};
+
+/* ---------- разбор CSV ---------- */
+
+// Разделитель по заголовку: русский Excel сохраняет CSV с «;».
+function detectDelimiter(text) {
+  var lines = text.split(/\r\n|\n|\r/);
+  var first = "";
+  for (var i = 0; i < lines.length; i++) { if (lines[i].trim()) { first = lines[i]; break; } }
+  if (!first) throw new Error("Файл пуст.");
+  var best = null, bestN = 0;
+  [",", ";", "\t"].forEach(function (d) {
+    var n = first.split(d).length - 1;
+    if (n > bestN) { best = d; bestN = n; }
+  });
+  if (!best) throw new Error("Не удалось определить разделитель колонок (ожидается «,» или «;»). Первая строка: «" + first.slice(0, 60) + "».");
+  return best;
+}
+
+// Разбор по RFC 4180: поля в кавычках, запятые и переводы строк внутри полей, "" как экранированная кавычка.
+function splitRecords(text, delim) {
+  var recs = [], cells = [], cell = "", inQ = false, line = 1, start = 1, c, i;
+  for (i = 0; i < text.length; i++) {
+    c = text.charAt(i);
+    if (inQ) {
+      if (c === '"') {
+        if (text.charAt(i + 1) === '"') { cell += '"'; i++; } else { inQ = false; }
+      } else {
+        if (c === "\n") line++;
+        cell += c;
+      }
+    } else if (c === '"' && cell === "") {
+      inQ = true;
+    } else if (c === delim) {
+      cells.push(cell); cell = "";
+    } else if (c === "\n" || c === "\r") {
+      if (c === "\r" && text.charAt(i + 1) === "\n") i++;
+      cells.push(cell); recs.push({ line: start, cells: cells });
+      cells = []; cell = ""; line++; start = line;
+    } else {
+      cell += c;
+    }
+  }
+  if (inQ) throw new Error("В строке " + start + " не закрыта кавычка — файл повреждён.");
+  if (cell !== "" || cells.length) { cells.push(cell); recs.push({ line: start, cells: cells }); }
+  return recs;
+}
+
+/* ---------- нормализация ---------- */
+
+function clean(s) { return String(s).replace(/\s+/g, " ").trim(); }
+function keyOf(s) { return clean(s).toLowerCase().replace(/ё/g, "е").replace(/\s*[-–—]\s*/g, "-"); }
+
+function parsePaid(v) {
+  var k = String(v).toLowerCase().replace(/[^\p{L}\p{N}]/gu, "");
+  if (YES.indexOf(k) >= 0) return "paid";
+  if (NO.indexOf(k) >= 0) return "unpaid";
+  return "unknown";
+}
+
+function listLimit(arr, n) {
+  return arr.length > n ? arr.slice(0, n).join(", ") + " и ещё " + (arr.length - n) : arr.join(", ");
+}
+
+function makeGroups(rows, field, notes, what) {
+  var map = {}, order = [];
+  rows.forEach(function (r) {
+    var raw = r[field], k = keyOf(raw);
+    var g = map[k];
+    if (!g) { g = map[k] = { variants: {}, vorder: [], total: 0, paid: 0, unpaid: 0, unknown: 0 }; order.push(k); }
+    if (!(raw in g.variants)) { g.variants[raw] = 0; g.vorder.push(raw); }
+    g.variants[raw]++;
+    g.total++;
+    g[r.status]++;
+  });
+  var out = order.map(function (k) {
+    var g = map[k], label = g.vorder[0];
+    // Название группы: самое частое написание; при равенстве — «аккуратное» (с заглавной, но не ВСЕ ЗАГЛАВНЫЕ).
+    function tidy(v) { return v.charAt(0) !== v.charAt(0).toLowerCase() && v !== v.toUpperCase() ? 1 : 0; }
+    g.vorder.forEach(function (v) {
+      if (g.variants[v] > g.variants[label] || (g.variants[v] === g.variants[label] && tidy(v) > tidy(label))) label = v;
+    });
+    g.name = label;
+    if (g.vorder.length > 1) {
+      notes.push({ level: "warn", text: "Объединены разные написания (" + what + "): " +
+        g.vorder.map(function (v) { return "«" + v + "»"; }).join(", ") + " → «" + label + "»." });
+    }
+    return g;
+  });
+  out.sort(function (a, b) { return b.total - a.total || a.name.localeCompare(b.name, "ru"); });
+  return out;
+}
+
+/* ---------- анализ ---------- */
+
+function analyze(text) {
+  text = String(text).replace(/^﻿/, "");
+  var delim = detectDelimiter(text);
+  var recs = splitRecords(text, delim).filter(function (r) {
+    return r.cells.some(function (c) { return c.trim() !== ""; });
+  });
+  if (!recs.length) throw new Error("В файле нет данных.");
+
+  var header = recs[0].cells.map(function (h) { return h.replace(/^﻿/, "").trim().toLowerCase(); });
+  var idx = {};
+  Object.keys(COLS).forEach(function (f) {
+    for (var i = 0; i < header.length; i++) {
+      if (COLS[f].indexOf(header[i]) >= 0) { idx[f] = i; return; }
+    }
+    throw new Error("В файле нет колонки «" + COLS[f][0] + "». Найдены колонки: " + header.join(", ") + ".");
+  });
+
+  var notes = [], rows = [], skipped = [], emptyCity = 0, emptySource = 0, unknownVals = {}, unknownLines = [];
+  recs.slice(1).forEach(function (r) {
+    var cells = r.cells;
+    while (cells.length > header.length && cells[cells.length - 1].trim() === "") cells = cells.slice(0, -1);
+    if (cells.length !== header.length) { skipped.push(r.line); return; }
+    var city = clean(cells[idx.city]), source = clean(cells[idx.source]), raw = cells[idx.paid].trim();
+    if (!city) { city = NOT_SET; emptyCity++; }
+    if (!source) { source = NOT_SET; emptySource++; }
+    var status = parsePaid(raw);
+    if (status === "unknown") { unknownVals[raw || "(пусто)"] = 1; unknownLines.push(r.line); }
+    rows.push({ city: city, source: source, status: status });
+  });
+
+  if (skipped.length) {
+    notes.push({ level: "warn", text: "Пропущено строк с неверным числом колонок: " + skipped.length +
+      " (строки файла: " + listLimit(skipped, 10) + "). Они не учтены в цифрах." });
+  }
+  if (unknownLines.length) {
+    notes.push({ level: "warn", text: "Не распознано значение оплаты в " + unknownLines.length + " строках (значения: " +
+      listLimit(Object.keys(unknownVals).map(function (v) { return "«" + v + "»"; }), 6) + "; строки файла: " +
+      listLimit(unknownLines, 10) + "). Они входят в «Всего», но не в «Оплатили» и «Не оплатили»; в таблицах показаны в колонке «Не ясно»." });
+  }
+  if (emptyCity) notes.push({ level: "warn", text: "Строк без города: " + emptyCity + " — они сгруппированы как «" + NOT_SET + "»." });
+  if (emptySource) notes.push({ level: "warn", text: "Строк без канала: " + emptySource + " — они сгруппированы как «" + NOT_SET + "»." });
+  if (!rows.length) throw new Error("В файле нет ни одной корректной строки с данными.");
+
+  var m = { total: rows.length, paid: 0, unpaid: 0, unknown: 0, notes: notes, read: rows.length, skipped: skipped.length };
+  rows.forEach(function (r) { m[r.status]++; });
+  m.sources = makeGroups(rows, "source", notes, "канал");
+  m.cities = makeGroups(rows, "city", notes, "город");
+  return m;
+}
+
+/* ---------- вывод (только textContent: значения из файла не интерпретируются как HTML) ---------- */
+
+function el(tag, text, cls) {
+  var e = document.createElement(tag);
+  if (text !== undefined && text !== null) e.textContent = text;
+  if (cls) e.className = cls;
+  return e;
+}
+function pct(p, t) { return t ? Math.round(p / t * 100) : 0; }
+
+function buildTable(host, title, groups, totals, showUnknown) {
+  host.textContent = "";
+  var table = el("table");
+  var thead = el("thead"), hr = el("tr");
+  [title, "Всего", "Оплатили", "Не оплатили"].concat(showUnknown ? ["Не ясно"] : [], ["% оплаты"]).forEach(function (h) { hr.appendChild(el("th", h)); });
+  thead.appendChild(hr); table.appendChild(thead);
+
+  var tbody = el("tbody");
+  groups.forEach(function (g) {
+    var tr = el("tr");
+    tr.appendChild(el("td", g.name));
+    tr.appendChild(el("td", g.total));
+    tr.appendChild(el("td", g.paid));
+    tr.appendChild(el("td", g.unpaid));
+    if (showUnknown) tr.appendChild(el("td", g.unknown));
+    var p = pct(g.paid, g.total), td = el("td"), wrap = el("span", null, "pct"), bar = el("span", null, "bar"), fill = el("i");
+    fill.style.width = p + "%";
+    bar.appendChild(fill); wrap.appendChild(bar); wrap.appendChild(document.createTextNode(p + "%"));
+    td.appendChild(wrap); tr.appendChild(td);
+    tbody.appendChild(tr);
+  });
+  table.appendChild(tbody);
+
+  var tfoot = el("tfoot"), fr = el("tr");
+  fr.appendChild(el("td", "Итого"));
+  fr.appendChild(el("td", totals.total));
+  fr.appendChild(el("td", totals.paid));
+  fr.appendChild(el("td", totals.unpaid));
+  if (showUnknown) fr.appendChild(el("td", totals.unknown));
+  fr.appendChild(el("td", pct(totals.paid, totals.total) + "%"));
+  tfoot.appendChild(fr); table.appendChild(tfoot);
+  host.appendChild(table);
+}
+
+function setSource(main, sub) {
+  var s = document.getElementById("source");
+  s.textContent = "";
+  s.appendChild(el("strong", main));
+  if (sub) s.appendChild(el("small", sub));
+}
+
+function showNotes(list) {
+  var ul = document.getElementById("notes");
+  ul.textContent = "";
+  list.forEach(function (n) { ul.appendChild(el("li", n.text, n.level)); });
+}
+
+function clearView() {
+  ["k-total", "k-paid", "k-unpaid"].forEach(function (id) { document.getElementById(id).textContent = "–"; });
+  ["t-source", "t-city"].forEach(function (id) {
+    var h = document.getElementById(id);
+    h.textContent = "";
+    h.appendChild(el("div", "Нет данных", "empty"));
+  });
+}
+
+function show(model, mainText, subText) {
+  document.getElementById("k-total").textContent = model.total;
+  document.getElementById("k-paid").textContent = model.paid;
+  document.getElementById("k-unpaid").textContent = model.unpaid;
+  var showUnknown = model.unknown > 0;
+  buildTable(document.getElementById("t-source"), "Канал", model.sources, model, showUnknown);
+  buildTable(document.getElementById("t-city"), "Город", model.cities, model, showUnknown);
+  setSource(mainText, subText);
+  showNotes(model.notes);
+}
+
+function showError(err, mainText) {
+  clearView();
+  setSource(mainText, "Данные не показаны, чтобы не вводить в заблуждение устаревшими цифрами.");
+  showNotes([{ level: "err", text: "Ошибка: " + (err && err.message ? err.message : err) }]);
+}
+
+/* ---------- источники данных ---------- */
+
+function loadSnapshot() {
+  var label = "Встроенный снимок на " + SNAPSHOT_DATE;
+  try {
+    var m = analyze(document.getElementById("snapshot").textContent.trim());
+    show(m, label, "Это копия данных, а не живая связь с registrations.csv: новые регистрации сюда сами не попадут. " +
+      "Для актуальных цифр нажмите «Открыть свежий CSV…» или перетащите файл на страницу.");
+  } catch (e) { showError(e, label); }
+}
+
+function decodeBytes(buf) {
+  try { return new TextDecoder("utf-8", { fatal: true }).decode(buf); }
+  catch (e) { return new TextDecoder("windows-1251").decode(buf); } // Excel часто сохраняет CSV в Windows-1251
+}
+
+function loadFile(file) {
+  if (!file) return;
+  var label = "Файл «" + file.name + "»";
+  var reader = new FileReader();
+  reader.onerror = function () { showError(new Error("Не удалось прочитать файл."), label); };
+  reader.onload = function () {
+    try {
+      var m = analyze(decodeBytes(reader.result));
+      var modified = file.lastModified ? new Date(file.lastModified).toLocaleString("ru-RU") : "неизвестно";
+      show(m, label + " — загружено строк: " + m.read,
+        "Файл изменён: " + modified + ". Страница показывает данные только этого файла.");
+    } catch (e) { showError(e, label); }
+  };
+  reader.readAsArrayBuffer(file);
+}
+
+var fileInput = document.getElementById("file");
+fileInput.addEventListener("change", function () { loadFile(fileInput.files[0]); fileInput.value = ""; });
+document.addEventListener("dragover", function (e) { e.preventDefault(); document.body.classList.add("drag"); });
+document.addEventListener("dragleave", function (e) { if (!e.relatedTarget) document.body.classList.remove("drag"); });
+document.addEventListener("drop", function (e) {
+  e.preventDefault();
+  document.body.classList.remove("drag");
+  if (e.dataTransfer && e.dataTransfer.files.length) loadFile(e.dataTransfer.files[0]);
+});
+
+loadSnapshot();
+</script>
+<noscript>Для работы дашборда нужен включённый JavaScript.</noscript>
+</body>
+</html>
